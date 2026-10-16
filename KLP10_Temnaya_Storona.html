@@ -107,6 +107,36 @@ body.release-active .bat-flight{opacity:1}
 .dark-volume input{width:100px;accent-color:#a5fb63}
 body.embedded .dark-sound-tools{display:none}
 @media(max-width:900px){.site-header{flex-wrap:wrap}.dark-sound-tools{margin:4px auto}}
+
+/* Standalone dark side: smaller sound settings directly beneath the team mark */
+.site-header{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) auto;
+ grid-template-rows:auto auto;
+ column-gap:14px;row-gap:7px;
+ align-items:center;
+ padding-top:22px;padding-bottom:17px;
+}
+.site-header>.brand{grid-column:1;grid-row:1;justify-self:start}
+.site-header>.header-mark{grid-column:2;grid-row:1;justify-self:end}
+.site-header>.dark-sound-tools{
+ grid-column:1;grid-row:2;justify-self:start;align-self:start;
+ gap:6px;padding:5px 8px;margin:0;
+ width:max-content;max-width:100%;
+ border-radius:16px;
+}
+.site-header .dark-sound-toggle{font-size:11px;padding:7px 10px;line-height:1.2;border-radius:10px}
+.site-header .dark-volume{font-size:10px;gap:5px;white-space:nowrap}
+.site-header .dark-volume input{width:74px;height:16px}
+body.embedded .site-header{grid-template-rows:auto}
+@media(max-width:650px){
+ .site-header{grid-template-columns:1fr;grid-template-rows:auto auto auto;row-gap:9px}
+ .site-header>.brand{grid-column:1;grid-row:1}
+ .site-header>.dark-sound-tools{grid-column:1;grid-row:2}
+ .site-header>.header-mark{grid-column:1;grid-row:3;justify-self:start}
+ body.embedded .site-header{grid-template-rows:auto auto}
+ body.embedded .site-header>.header-mark{grid-row:2}
+}
 </style>
 </head>
 <body>
