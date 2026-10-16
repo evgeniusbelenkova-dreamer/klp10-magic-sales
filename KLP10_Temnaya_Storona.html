@@ -98,6 +98,15 @@ body.release-active .bat-flight{opacity:1}
  .blue-flame-field{opacity:.5}
 }
 @media(prefers-reduced-motion:reduce){.release-flip,.release-cauldron{animation:none}}
+
+/* Sounds in standalone ritual; main site's toolbar controls embedded ritual */
+.dark-sound-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid rgba(168,255,116,.30);background:#0c2215b5;border-radius:20px}
+.dark-sound-toggle{font-size:13px;font-weight:800;color:#c2f09b;background:#19321d;border:1px solid #57794b;border-radius:12px;padding:10px 12px}
+.dark-sound-toggle[aria-pressed=true]{background:linear-gradient(110deg,#8ce64e,#bcfc78);color:#0c1e0a}
+.dark-volume{display:flex;align-items:center;gap:7px;font-size:12px;color:#d7efcf;font-weight:750}
+.dark-volume input{width:100px;accent-color:#a5fb63}
+body.embedded .dark-sound-tools{display:none}
+@media(max-width:900px){.site-header{flex-wrap:wrap}.dark-sound-tools{margin:4px auto}}
 </style>
 </head>
 <body>
@@ -109,7 +118,7 @@ body.release-active .bat-flight{opacity:1}
 <header class="site-header">
  <div class="brand"><div class="brand-seal" aria-hidden="true"><svg viewBox="0 0 160 66"><path d="M5 20Q21 19 35 4L38 24Q52 11 65 17L79 3L95 17Q107 10 121 23L125 4Q139 20 155 21Q147 34 133 35Q123 28 110 41Q100 30 91 36L80 62L69 36Q60 30 50 41Q37 28 27 35Q13 33 5 20Z"/></svg></div><div class="brand-text"><strong>ГРУППА КЛП 10</strong><span>ПОТАЁННЫЙ УГОЛОК КОМАНДЫ</span></div></div>
  <div class="header-mark"><span></span> Только здесь. Только сейчас.</div>
-</header>
+<div class="dark-sound-tools" id="darkSoundTools" role="group" aria-label="Управление всеми звуками"><button class="dark-sound-toggle" id="darkSoundToggle" type="button" aria-pressed="false">🔇 Звук выкл</button><label class="dark-volume">🔊 Громкость <input id="darkSoundVolume" type="range" min="0" max="100" step="5" value="45" aria-label="Громкость звуков"></label></div></header>
 <main>
  <section class="hero-head"><div class="eyebrow">Для тех, кто всегда держит всё в себе</div><h1>Тёмная <em>сторона</em></h1><p class="hero-subtitle">Иногда даже самым сильным нужен уголок, где можно <strong>выдохнуть</strong>. Здесь не нужно подбирать слова и держать лицо. Просто отпусти то, что накопилось.</p></section>
  <div class="stage-grid">
@@ -244,4 +253,74 @@ function release(){if(btn.disabled||inRelease)return;inRelease=true;const hasTex
 btn.addEventListener('click',release);window.addEventListener('pagehide',clearAttachments);updateButton();
 })();
 </script>
-</body></html>
+
+<script>
+/* Локальный звуковой движок. Не передаёт текст, файлы или содержимое формы. */
+(()=>{
+ 'use strict';
+ if(window.self!==window.top)document.body.classList.add('embedded');
+ const settingOn='klp10SoundEnabled', settingLevel='klp10SoundVolume';
+ const read=(key,fallback)=>{try{return localStorage.getItem(key)??fallback}catch{return fallback}};
+ const save=(key,value)=>{try{localStorage.setItem(key,String(value))}catch{}};
+ let enabled=read(settingOn,'0')==='1';
+ let level=Math.min(1,Math.max(0,Number(read(settingLevel,'0.45'))||0));
+ const button=document.getElementById('darkSoundToggle'),range=document.getElementById('darkSoundVolume');
+ const input=document.getElementById('voidText'),send=document.getElementById('release'),picker=document.getElementById('imageInput');
+ let bubbleTimer=0, laughTimer=0, cauldron=null;
+ const players=new Map();
+ function audio(name){
+  if(!players.has(name)){
+   const item=new Audio('./assets/sounds/'+name+'.mp3');item.preload='none';players.set(name,item);
+  }
+  return players.get(name);
+ }
+ function stopLoop(){if(cauldron){cauldron.pause();try{cauldron.currentTime=0}catch{}}}
+ function stopAll(){stopLoop();for(const item of players.values()){item.pause();try{item.currentTime=0}catch{}}clearTimeout(laughTimer)}
+ function play(name,mult=1){
+  if(!enabled||level<=0||document.hidden)return;
+  const a=audio(name);
+  a.pause();try{a.currentTime=0}catch{}
+  a.volume=Math.min(1,level*mult);
+  const p=a.play();if(p?.catch)p.catch(()=>{});
+ }
+ function bubble(){
+  if(!enabled||level<=0||document.hidden)return;
+  cauldron=audio('dark_boil');cauldron.loop=true;cauldron.volume=level*.30;
+  if(cauldron.paused){const p=cauldron.play();if(p?.catch)p.catch(()=>{})}
+  clearTimeout(bubbleTimer);bubbleTimer=setTimeout(stopLoop,1450);
+ }
+ function render(){
+  button.textContent=enabled?'🔊 Звук вкл':'🔇 Звук выкл';
+  button.setAttribute('aria-pressed',String(enabled));
+  range.value=String(Math.round(level*100));
+  for(const [name,a] of players){a.volume=level*(name==='dark_boil'?.30:1)}
+ }
+ function update(nextOn,nextLevel,store){
+  enabled=Boolean(nextOn);level=Math.max(0,Math.min(1,Number(nextLevel)||0));
+  if(store){save(settingOn,enabled?'1':'0');save(settingLevel,level)}
+  if(!enabled||!level)stopAll();
+  render();
+ }
+ button.addEventListener('click',()=>{update(!enabled,level,true);if(enabled)play('dark_bats',.45)});
+ range.addEventListener('input',()=>update(enabled,Number(range.value)/100,true));
+ input?.addEventListener('input',bubble);
+ picker?.addEventListener('change',()=>play('dark_cauldron',.25));
+ document.getElementById('dropArea')?.addEventListener('drop',()=>play('dark_cauldron',.25));
+ send?.addEventListener('click',()=>{
+  if(!document.getElementById('releaseOverlay')?.classList.contains('active'))return;
+  clearTimeout(bubbleTimer);stopLoop();
+  play('dark_flame',.87);play('dark_bats',.35);
+  clearTimeout(laughTimer);laughTimer=setTimeout(()=>play('dark_laugh',.55),1750);
+ });
+ window.addEventListener('message',event=>{
+  if(event.origin!==location.origin||event.data?.type!=='klp10-sound-settings')return;
+  update(event.data.enabled,event.data.level,false);
+ });
+ window.addEventListener('storage',e=>{
+  if(e.key===settingOn||e.key===settingLevel)update(read(settingOn,'0')==='1',read(settingLevel,'0.45'),false);
+ });
+ window.addEventListener('pagehide',stopAll);
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAll()});
+ render();
+})();
+</script></body></html>
